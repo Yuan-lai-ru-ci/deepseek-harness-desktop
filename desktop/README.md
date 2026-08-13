@@ -12,17 +12,31 @@ spawn `dsh web` 宿主，`BrowserWindow` 加载其 Web UI（默认 `http://127.0
 
 ```
 desktop/
-├── assets/            # 应用图标（SVG 源 + 生成的 PNG/ICO）
+├── assets/          # 应用图标（SVG 源 + 生成的 PNG/ICO）
 ├── scripts/
-│   ├── generate-icons.mjs    # 从 icon.svg 重新生成图标
-│   └── verify-lifecycle.js   # HostProcess 启停 & 孤儿进程清理验证
+│   ├── generate-icons.mjs   # 从 icon.svg 重新生成图标
+│   ├── verify-lifecycle.js   # HostProcess 启停 & 孤儿进程清理验证
+│   ├── verify-e2e.js         # app.quit 后无孤儿宿主验证
+│   └── verify-titlebar.js    # frameless 页内标题栏 + 窗口控制桥验证
 ├── src/
-│   ├── main.js        # Electron 主进程：窗口、菜单、生命周期、宿主管理
-│   ├── host.js        # dsh web 宿主进程管理（定位/启动/就绪等待/进程树清理）
-│   └── preload.js     # 上下文桥（安全隔离，预留路线 A 接入点）
-├── .npmrc             # 本机代理（下载 Electron 二进制的 network 需要）
-└── package.json       # electron + electron-builder
+│   ├── main.js       # Electron 主进程：frameless 窗口、IPC、生命周期、宿主管理
+│   ├── host.js       # dsh web 宿主进程管理（定位/启动/就绪等待/进程树清理）
+│   ├── titlebar.js   # 页内标题栏注入（CSS + DOM + 按钮）
+│   └── preload.js    # 窗口控制 IPC 桥（contextBridge，安全隔离）
+├── .npmrc           # 本机代理（下载 Electron 二进制的 network 需要）
+└── package.json     # electron + electron-builder
 ```
+
+## 界面：无框窗口 + 页内标题栏
+
+桌面窗口去掉系统标题栏和菜单（`frame: false`），用一个**页内标题栏**承载标题与窗口控制按钮
+（最小化/最大化-还原/关闭），与 DeepSeek Harness 深色主题融为一体：
+
+- `src/titlebar.js` 注入标题栏 DOM + CSS（`-webkit-app-region: drag` 拖拽区，按钮 `no-drag`），
+  并给 `body` 加 `padding-top` 让内容下移、让出标题栏高度，避免遮挡现有侧边栏/对话区。
+- `src/preload.js` 用 contextBridge 暴露 `window.desktopWindow`（minimize/maximize/close/isMaximized/onMaximizedChange），
+  页内按钮通过它驱动真实窗口；主进程 `maximize/unmaximize` 时推送状态同步按钮图标。
+- F12 = 开发者工具，F5 = 重载（无系统菜单后保留的快捷键）。
 
 ## 环境要求
 

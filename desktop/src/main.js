@@ -1,7 +1,8 @@
 'use strict'
 
-const { app, BrowserWindow, Menu, dialog, shell } = require('electron')
+const { app, BrowserWindow, dialog, shell, ipcMain } = require('electron')
 const { HostProcess } = require('./host')
+const { installTitlebar } = require('./titlebar')
 
 const PORT = Number(process.env.DSH_PORT || 3080)
 const url = `http://127.0.0.1:${PORT}`
@@ -10,55 +11,6 @@ const url = `http://127.0.0.1:${PORT}`
 let mainWindow = null
 const host = new HostProcess({ port: PORT })
 
-/**
- * Build the application menu. The Web UI owns the content, so we expose only
- * the standard window/document controls plus a couple of helpers that are
- * genuinely useful for a desktop shell (reload, toggling the host devtools,
- * opening the harness home/data directory in the OS file manager).
- */
-function buildMenu() {
-  const template = [
-    {
-      label: '文件(&F)',
-      submenu: [{ label: '退出', accelerator: 'CmdOrCtrl+Q', click: () => app.quit() }],
-    },
-    {
-      label: '视图(&V)',
-      submenu: [
-        { role: 'reload', label: '重新加载' },
-        { role: 'toggleDevTools', label: '开发者工具' },
-        { type: 'separator' },
-        { role: 'resetZoom', label: '实际大小' },
-        { role: 'zoomIn', label: '放大' },
-        { role: 'zoomOut', label: '缩小' },
-        { type: 'separator' },
-        { role: 'togglefullscreen', label: '切换全屏' },
-      ],
-    },
-    {
-      label: '帮助(&H)',
-      submenu: [
-        {
-          label: '查看仓库/Docs',
-          click: () => shell.openExternal('https://github.com/Yuan-lai-ru-ci/deepseek-harness-desktop'),
-        },
-        {
-          label: '关于',
-          click: () => {
-            void dialog.showMessageBox(mainWindow, {
-              type: 'info',
-              title: 'DeepSeek Harness Desktop',
-              message: 'DeepSeek Harness Desktop',
-              detail: `基于 DeepSeek Harness (dsh) 的 Electron 桌面包装。\n本地服务: ${url}`,
-            })
-          },
-        },
-      ],
-    },
-  ]
-  return Menu.buildFromTemplate(template)
-}
-
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1440,
@@ -66,8 +18,10 @@ function createWindow() {
     minWidth: 960,
     minHeight: 640,
     title: 'DeepSeek Harness',
-    backgroundColor: '#0f1419',
-    autoHideMenuBar: true,
+    backgroundColor: '#151517',
+    // No OS frame: the in-page title bar (titlebar.js) owns the title + window
+    // controls and is wired to the window via the IPC bridge in preload.js.
+    frame: false,
     webPreferences: {
       // Never expose Node to the rendered Web UI.
       contextIsolation: true,
@@ -99,8 +53,30 @@ function createWindow() {
     mainWindow = null
   })
 
+  // Keep the window-control buttons in sync with the real window state.
+  const pushMaximized = () => {
+    mainWindow?.webContents.send('window:max-changed', mainWindow.isMaximized())
+  }
+  mainWindow.on('maximize', pushMaximized)
+  mainWindow.on('unmaximize', pushMaximized)
+
+  // Frameless windows can't be recovered with the system menu; restore a few
+  // essential accelerators (F12 devtools, reload).
+  mainWindow.webContents.on('before-input-event', (_event, input) => {
+    if (input.type !== 'keyDown') return
+    if (input.key === 'F12') mainWindow?.webContents.toggleDevTools()
+    if (input.key === 'F5') mainWindow?.webContents.reload()
+  })
+
   mainWindow.loadURL(url)
+
+  // Inject the in-page title bar once the harness UI has had a chance to
+  // mount; idempotent, so a later reload also inherits it.
+  mainWindow.webContents.on('did-finish-load', () => {
+    setTimeout(() => installTitlebar(mainWindow.webContents), 1200)
+  })
 }
+
 
 /**
  * Show a fatal error and quit. Used when the host cannot be started or dies
@@ -111,8 +87,18 @@ function fatal(message) {
   app.exit(1)
 }
 
+// Window-control IPC surface consumed by the in-page titlebar (preload.js).
+function registerWindowControls() {
+  const win = () => mainWindow
+  ipcMain.on('window:minimize', () => win()?.minimize())
+  ipcMain.on('window:maximize', () => { const w = win(); if (w) w.maximize() })
+  ipcMain.on('window:toggle-maximize', () => { const w = win(); if (w) w.isMaximized() ? w.unmaximize() : w.maximize() })
+  ipcMain.on('window:close', () => win()?.close())
+  ipcMain.handle('window:is-maximized', () => win()?.isMaximized() ?? false)
+}
+
 app.whenReady().then(async () => {
-  Menu.setApplicationMenu(buildMenu())
+  registerWindowControls()
 
   try {
     await host.start()

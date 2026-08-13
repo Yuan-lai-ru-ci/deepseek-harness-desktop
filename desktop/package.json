@@ -14,6 +14,7 @@
     "icons": "node scripts/generate-icons.mjs",
     "verify:lifecycle": "node scripts/verify-lifecycle.js",
     "verify:e2e": "node scripts/verify-e2e.js",
+    "verify:titlebar": "electron scripts/verify-titlebar.js",
     "pack": "electron-builder --dir",
     "dist": "electron-builder",
     "postinstall": "electron-builder install-app-deps"
