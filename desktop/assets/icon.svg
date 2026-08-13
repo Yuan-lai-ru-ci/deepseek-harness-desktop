@@ -1,0 +1,24 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="64" y1="48" x2="448" y2="464" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#4D6BFE"/>
+      <stop offset="1" stop-color="#1E2B8A"/>
+    </linearGradient>
+    <linearGradient id="whale" x1="140" y1="120" x2="380" y2="400" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#C7D2FE"/>
+    </linearGradient>
+  </defs>
+  <!-- Rounded app square -->
+  <rect x="16" y="16" width="480" height="480" rx="112" fill="url(#bg)"/>
+  <!-- Minimal stylized "harness device" / circuit motif -->
+  <rect x="120" y="120" width="272" height="272" rx="56" fill="#0B1024" fill-opacity="0.18" stroke="url(#whale)" stroke-width="14"/>
+  <circle cx="256" cy="256" r="84" fill="url(#whale)"/>
+  <path d="M256 172 v168 M172 256 h168" stroke="#1E2B8A" stroke-width="16" stroke-linecap="round"/>
+  <circle cx="256" cy="256" r="20" fill="#FFFFFF"/>
+  <!-- four corner terminals -->
+  <circle cx="256" cy="120" r="22" fill="#6D8BFF"/>
+  <circle cx="256" cy="392" r="22" fill="#6D8BFF"/>
+  <circle cx="120" cy="256" r="22" fill="#6D8BFF"/>
+  <circle cx="392" cy="256" r="22" fill="#6D8BFF"/>
+</svg>

@@ -1,0 +1,17 @@
+# Electron / electron-builder
+release/
+dist/
+*.exe
+serve/
+out/
+
+# Node
+node_modules/
+*.tsbuildinfo
+
+# Local settings
+.env
+.env.local
+
+# Machine-local npm proxy (not for sharing)
+.npmrc
