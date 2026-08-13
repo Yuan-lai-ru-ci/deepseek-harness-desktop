@@ -68,16 +68,23 @@ npm install          # 下载 Electron（需代理，见 .npmrc）
 npm start            # 或 npm run dev
 ```
 
-应用会：
+应用会（开发模式）：
 1. 探测仓库根，`spawn pnpm dsh web`；
 2. 轮询 `http://127.0.0.1:3080`，就绪后 `BrowserWindow` 加载；
 3. 关闭所有窗口时停止宿主（Windows 下 `taskkill /T` 杀整棵进程树，避免孤儿进程）。
+
+### 环境要求
+
+- 开发、以及**打包安装后的运行**都需要本机有 **Node.js **（含 `npm`/`npx`）。
+- 打包安装后（无源码、通常无全局 `dsh`），应用通过 `npx --yes @deepseek-ai/dsh web` 启动宿主：
+  首次联网下载 DSH CLI（几十 MB，npx 缓存），之后走缓存、离线可用。
+  - 若目标机器断网且无缓存，首次启动会失败——建议预装 `npm i -g @deepseek-ai/dsh` 或先联网跑一次。
 
 ### 自定义
 
 | 环境变量 | 作用 | 默认 |
 |---|---|---|
-| `DSH_CMD` | 覆盖宿主启动命令 | 自动探测（源码 `pnpm dsh web` / 全局 `dsh`） |
+| `DSH_CMD` | 覆盖宿主启动命令 | 开发=源码 `pnpm dsh web`；安装包=`npx @deepseek-ai/dsh web` |
 | `DSH_PORT` | 宿主 HTTP 端口 | `3080` |
 
 ## 打包
@@ -94,6 +101,7 @@ npm run dist    # electron-builder 产出 NSIS 安装包（release/）
 - `npm run verify:e2e`：app.quit 正常退路径后无孤儿宿主。
 - `npm run verify:titlebar`：通用窗口壳层（布局不被下移）+ `desktopWindow` 全 API
   （含 getState / setTitle / setControls('custom') 接管 / 'native' 恢复）。
+- `npm run verify:packaged`：模拟安装包场景，验证 npx 桥接能拉起宿主并干净停止。
 
 ## 路线 A（后续迭代，架构级 IPC shell）
 
