@@ -1,3 +1,20 @@
+# DeepSeek 桌面版 · DeepSeek Harness Desktop
+
+<div align="center">
+
+**DeepSeek 官方智能体的桌面客户端** —— 内置本地 `dsh` 宿主，双击即用，无需另行启动服务。
+
+English | [中文](README.zh.md)
+
+</div>
+
+> 本仓库 fork 自 [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness)，
+> 在 Web 端基础上新增了 **Electron 桌面版**（`desktop/`）：无框原生窗口、页内窗口控制、
+> 页内标题栏，并且**打包安装后自动通过 `npx @deepseek-ai/dsh` 拉起本地宿主**，装完即用。
+> 上游仓库核心说明保留如下。
+
+---
+
 # DeepSeek Harness
 
 English | [中文](README.zh.md)
@@ -5,6 +22,26 @@ English | [中文](README.zh.md)
 DeepSeek Harness (`dsh`) is an open-source agent harness developed by [DeepSeek AI](https://deepseek.com).
 
 It uses an architecture where **everything is a plugin**, and is powered by [Cordis](https://github.com/cordiverse/cordis), whose design is described in [_A Programming Paradigm for Spatiotemporal Composability_](https://github.com/cordiverse/paper).
+
+## Desktop edition
+
+`desktop/` is a standalone Electron app that wraps the Web UI into a native window:
+
+- Frameless window with an in-page title bar and window controls (floating top-right buttons).
+- The installer boots the local host itself via `npx --yes @deepseek-ai/dsh web` — no separate
+  service to start.
+- Third-party Web UIs (e.g. dsh-web-ui) can reuse or take over the window controls
+  (see `desktop/docs/integration.md`).
+
+```sh
+cd desktop
+npm install
+npm start           # development (boot from the source checkout via pnpm dsh web)
+npm run dist        # build the NSIS installer -> release/
+```
+
+> Note: the packaged app still needs Node.js (with npx) on the machine. On first launch it
+> downloads the DSH CLI (a few tens of MB) over the network, then cached by npx for offline use.
 
 ## Developer preview
 

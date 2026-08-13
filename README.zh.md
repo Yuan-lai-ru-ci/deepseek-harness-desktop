@@ -1,3 +1,20 @@
+# DeepSeek 桌面版 · DeepSeek Harness Desktop
+
+<div align="center">
+
+**DeepSeek 官方智能体的桌面客户端** —— 内置本地 `dsh` 宿主，双击即用，无需另行启动服务。
+
+[English](README.md) | 中文
+
+</div>
+
+> 本仓库 fork 自 [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness)，
+> 在 Web 端基础上新增了 **Electron 桌面版**（`desktop/`）：无框原生窗口、页内窗口控制、
+> 页内标题栏，并且**打包安装后自动通过 `npx @deepseek-ai/dsh` 拉起本地宿主**，装完即用。
+> 上游仓库核心说明保留如下。
+
+---
+
 # DeepSeek Harness
 
 [English](README.md) | 中文
@@ -5,6 +22,23 @@
 DeepSeek Harness（`dsh`）是由 [DeepSeek AI](https://deepseek.com) 开发的开源 agent harness（智能体框架）。
 
 它采用**一切皆插件**的架构，并由 [Cordis](https://github.com/cordiverse/cordis) 驱动，其设计参见论文 [_A Programming Paradigm for Spatiotemporal Composability_](https://github.com/cordiverse/paper)。
+
+## 桌面版（Desktop）
+
+`desktop/` 是一个独立 Electron 应用，把上述 Web 端包成原生桌面窗口：
+
+- 无框窗口 + 页内标题栏、窗口控制按钮；页内右上角可悬浮窗口按钮。
+- 安装包会自动通过 `npx --yes @deepseek-ai/dsh web` 拉起本地宿主，无需手动启动服务。
+- 支持第三方 Web UI（如 dsh-web-ui）接入/接管窗口控制（见 `desktop/docs/integration.md`）。
+
+```sh
+cd desktop
+npm install
+npm start           # 开发运行（走仓库源码 pnpm dsh web）
+npm run dist        # 打包 NSIS 安装包 -> release/
+```
+
+> 安装包运行时仍需要本机有 Node.js（含 npx）。首次启动会联网下载 DSH CLI（约几十 MB），之后走 npx 缓存。
 
 ## 开发者预览
 
