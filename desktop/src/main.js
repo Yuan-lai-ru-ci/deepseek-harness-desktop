@@ -2,7 +2,7 @@
 
 const { app, BrowserWindow, dialog, shell, ipcMain } = require('electron')
 const { HostProcess } = require('./host')
-const { installTitlebar } = require('./titlebar')
+const { installTitlebar, setControlsMode } = require('./titlebar')
 
 const PORT = Number(process.env.DSH_PORT || 3080)
 const url = `http://127.0.0.1:${PORT}`
@@ -10,6 +10,9 @@ const url = `http://127.0.0.1:${PORT}`
 /** Primary window instance, kept to guard against GC. */
 let mainWindow = null
 const host = new HostProcess({ port: PORT })
+
+/** Number of renderer-side state subscriptions (drives pushWindowState). */
+let stateSubscriberCount = 0
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -53,12 +56,21 @@ function createWindow() {
     mainWindow = null
   })
 
-  // Keep the window-control buttons in sync with the real window state.
-  const pushMaximized = () => {
-    mainWindow?.webContents.send('window:max-changed', mainWindow.isMaximized())
+  // Keep window-state subscribers (the in-page controls / any custom chrome)
+  // in sync with the real window: push a unified state only when someone is
+  // listening, on every relevant transition.
+  const pushWindowState = () => {
+    const w = mainWindow
+    if (!w || stateSubscriberCount <= 0) return
+    w.webContents.send('window:state-changed', {
+      maximized: w.isMaximized(),
+      fullscreen: w.isFullScreen(),
+    })
   }
-  mainWindow.on('maximize', pushMaximized)
-  mainWindow.on('unmaximize', pushMaximized)
+  mainWindow.on('maximize', pushWindowState)
+  mainWindow.on('unmaximize', pushWindowState)
+  mainWindow.on('enter-full-screen', pushWindowState)
+  mainWindow.on('leave-full-screen', pushWindowState)
 
   // Frameless windows can't be recovered with the system menu; restore a few
   // essential accelerators (F12 devtools, reload).
@@ -95,6 +107,30 @@ function registerWindowControls() {
   ipcMain.on('window:toggle-maximize', () => { const w = win(); if (w) w.isMaximized() ? w.unmaximize() : w.maximize() })
   ipcMain.on('window:close', () => win()?.close())
   ipcMain.handle('window:is-maximized', () => win()?.isMaximized() ?? false)
+  ipcMain.handle('window:is-fullscreen', () => win()?.isFullScreen() ?? false)
+
+  // Title from the hosted UI (so it can control the OS/taskbar title).
+  ipcMain.on('window:set-title', (_e, title) => {
+    const w = win()
+    if (w && typeof title === 'string') w.setTitle(title)
+  })
+
+  // Hand window-chrome ownership to the page: 'native' shows the built-in
+  // controls, 'custom' hides them (page draws its own and drives the window).
+  ipcMain.on('window:set-controls', (_e, mode) => {
+    const w = win()
+    if (w && (mode === 'native' || mode === 'custom')) {
+      setControlsMode(w.webContents, mode)
+    }
+  })
+
+  // Optional throttling for window-state pushes (count subscribers).
+  ipcMain.on('window:subscribe-state', () => { stateSubscriberCount += 1 })
+  ipcMain.on('window:unsubscribe-state', () => {
+    stateSubscriberCount = Math.max(0, stateSubscriberCount - 1)
+    // Drop listeners that will never be read again.
+    ipcMain.removeAllListeners('window:is-fullscreen')
+  })
 }
 
 app.whenReady().then(async () => {

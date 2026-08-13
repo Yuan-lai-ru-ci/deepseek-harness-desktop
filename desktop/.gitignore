@@ -15,3 +15,6 @@ node_modules/
 
 # Machine-local npm proxy (not for sharing)
 .npmrc
+
+# Generated verification screenshot (scripts/verify-titlebar.js output)
+titlebar-preview.png
