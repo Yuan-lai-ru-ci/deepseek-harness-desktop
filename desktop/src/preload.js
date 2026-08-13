@@ -86,6 +86,9 @@ const api = {
     if (mode !== 'native' && mode !== 'custom') return
     ipcRenderer.send('window:set-controls', mode)
   },
+
+  /** Open the built-in About dialog (brand, version, credits). */
+  showAbout: () => ipcRenderer.send('window:about'),
 }
 
 contextBridge.exposeInMainWorld('desktopWindow', api)

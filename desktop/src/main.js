@@ -127,6 +127,24 @@ function registerWindowControls() {
     }
   })
 
+  // Built-in About dialog (brand, version, notes).
+  ipcMain.on('window:about', () => {
+    const w = win()
+    if (!w) return
+    void dialog.showMessageBox(w, {
+      type: 'info',
+      title: '关于 DeepSeek 桌面版',
+      message: 'DeepSeek 桌面版',
+      detail:
+        'DeepSeek 官方智能体的桌面客户端\n' +
+        `版本 ${app.getVersion()}\n\n` +
+        '内置本地 dsh 宿主，双击即用，无需另行启动服务。\n' +
+        '基于 DeepSeek Harness (dsh) 与 Electron 构建。',
+      buttons: ['好的'],
+      defaultId: 0,
+    })
+  })
+
   // Optional throttling for window-state pushes (count subscribers).
   ipcMain.on('window:subscribe-state', () => { stateSubscriberCount += 1 })
   ipcMain.on('window:unsubscribe-state', () => {

@@ -17,13 +17,13 @@
  * Styling is CSS-variable driven so a hosted skin can remap colors/sizes.
  */
 
-const CONTROLS_W = 135 // width reserved for the 3 buttons (45px each)
+const CONTROLS_W = 180 // width reserved for the window buttons (4 × 45px: about, min, max, close)
 
 /** CSS injected into the page. CSS variables let a third-party UI remap it. */
 const css = `
   :root {
     --dshctrl-h: 34px;                 /* total chrome height (drag strip + buttons) */
-    --dshctrl-right: 135px;            /* width reserved for the button cluster */
+    --dshctrl-right: 180px;            /* width reserved for the button cluster */
     --dshctrl-bg: transparent;         /* container background (drag strip + buttons) */
     --dshctrl-color: #a1a1aa;
     --dshctrl-color-hover: #f4f4f5;
@@ -72,6 +72,9 @@ const css = `
 `
 
 const controlsHtml = `
+  <button class="dsh-winctrl__btn" data-action="about" title="关于" aria-label="关于">
+    <svg viewBox="0 0 12 12"><circle cx="6" cy="6" r="4.5" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M6 5.3v2.6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="6" cy="3.4" r="0.8" fill="currentColor"/></svg>
+  </button>
   <button class="dsh-winctrl__btn" data-action="minimize" title="最小化" aria-label="最小化">
     <svg viewBox="0 0 12 12"><rect x="1" y="5.5" width="10" height="1.2" rx="0.6"/></svg>
   </button>
@@ -97,6 +100,7 @@ const script = `
 
     const bridge = window.desktopWindow
     const btn = (a) => cluster.querySelector('[data-action="' + a + '"]')
+    btn('about')?.addEventListener('click', () => bridge?.showAbout())
     btn('minimize')?.addEventListener('click', () => bridge?.minimize())
     btn('close')?.addEventListener('click', () => bridge?.close())
     const onState = (st) => {
