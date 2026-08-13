@@ -9,7 +9,10 @@ const url = `http://127.0.0.1:${PORT}`
 
 /** Primary window instance, kept to guard against GC. */
 let mainWindow = null
-const host = new HostProcess({ port: PORT })
+const host = new HostProcess({
+  port: PORT,
+  isPackaged: app.isPackaged,
+})
 
 /** Number of renderer-side state subscriptions (drives pushWindowState). */
 let stateSubscriberCount = 0

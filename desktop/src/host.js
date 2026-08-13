@@ -1,6 +1,6 @@
 'use strict'
 
-const { spawn, execFile } = require('node:child_process')
+const { spawn } = require('node:child_process')
 const { existsSync } = require('node:fs')
 const { join, resolve } = require('node:path')
 const http = require('node:http')
@@ -14,17 +14,28 @@ const net = require('node:net')
  * `dsh web` process, waits until the HTTP endpoint is reachable, watches for
  * premature exit, and tears the child down with the app.
  *
- * Command resolution order:
- *   1. `DSH_CMD` environment variable (explicit full command, whitespace-split).
- *   2. Source checkout (`<desktop>/..` has package.json + pnpm-workspace.yaml) →
- *      run with the repo's own `pnpm dsh web` (cwd = repo root).
- *   3. Fallback to a globally available `dsh` / `npx @deepseek-ai/dsh web`.
+ * Command resolution order (development, app.isPackaged === false):
+ *   1. `DSH_CMD` environment variable (explicit full command).
+ *   2. Self-contained payload at `<cwd>/../dsh` if present.
+ *   3. Source checkout (fork repo root) → `pnpm dsh web`.
+ *   4. Global `dsh` / `npx @deepseek-ai/dsh web` fallback.
+ *
+ * Command resolution order (packaged install, app.isPackaged === true):
+ *   1. `DSH_CMD` environment variable.
+ *   2. Self-contained payload at `resources/dsh` if present.
+ *   3. Global `dsh` if installed (offline, no network).
+ *   4. `npx --yes @deepseek-ai/dsh web` (one-shot fetch; needs network the
+ *      first time, then cached). Requires Node.js on the machine.
  */
 class HostProcess {
-  constructor({ port = 3080, log = (...a) => console.log(...a), cwd = process.cwd() } = {}) {
+  constructor({ port = 3080, log = (...a) => console.log(...a), cwd = process.cwd(), isPackaged = false, startTimeoutMs = null } = {}) {
     this.port = port
     this.log = log
     this.cwd = cwd
+    this.isPackaged = isPackaged
+    // Packaged apps may fetch `dsh` via npx on first launch (needs more time);
+    // development boots from source and is fast.
+    this.startTimeoutMs = startTimeoutMs ?? (isPackaged ? 120_000 : 45_000)
     this.child = null
     this.stopRequested = false
   }
@@ -76,23 +87,34 @@ class HostProcess {
     }
 
     // 2. Self-contained payload bundled into the packaged app
-    //    (resources/dsh is a full deepseek-harness build, see README 打包).
+    //    (resources/dsh is a full deepseek-harness build, see README).
     const payloadRoot = resolve(this.cwd, '..', 'dsh')
     if (HostProcess.isSourceCheckout(payloadRoot)) {
       const pnpmBin = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm'
       return { command: pnpmBin, args: ['dsh', 'web'], cwd: payloadRoot }
     }
 
-    // 3. Source checkout (development: run from the fork repository root).
+    // 3. Packaged install: no source checkout to fall back on — use a global
+    //    dsh when present, otherwise fetch via npx (needs Node.js + network
+    //    on first launch).
+    if (this.isPackaged) {
+      const npx = process.platform === 'win32' ? 'npx.cmd' : 'npx'
+      return {
+        command: npx,
+        args: ['--yes', '@deepseek-ai/dsh', 'web'],
+        cwd: this.cwd,
+      }
+    }
+
+    // 4. Development: prefer the fork source checkout, then global dsh.
     const repoRoot = resolve(this.cwd, '..')
     if (HostProcess.isSourceCheckout(repoRoot)) {
       const pnpmBin = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm'
       return { command: pnpmBin, args: ['dsh', 'web'], cwd: repoRoot }
     }
 
-    // 4. Global fallback.
+    // 5. Last-resort global/npx fallback for development.
     if (process.platform === 'win32') {
-      // Spawning bat/cmd directly on Windows needs the shell; execFile handles it.
       return { command: 'dsh.cmd', args: ['web'], cwd: this.cwd }
     }
     return { command: 'dsh', args: ['web'], cwd: this.cwd }
@@ -140,7 +162,7 @@ class HostProcess {
       }
     })
 
-    const deadline = Date.now() + 45_000
+    const deadline = Date.now() + this.startTimeoutMs
     while (Date.now() < deadline) {
       if (this.stopRequested) throw new Error('host start cancelled')
       if (earlyExit) throw earlyExit
